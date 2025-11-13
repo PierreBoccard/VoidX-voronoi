@@ -1,0 +1,12 @@
+{
+  "path": "/Users/boccardpierre/Documents/PhD/Research/Code/VoidX/data",
+  "name": "simulation_box2",
+  "box": true,
+  "hdf": false,
+  "VIDE": false,
+  "fraction_in_voids": null,
+  "N_neighbours": 20, 
+  "box_size_mpc": 60.0,
+  "void_size": 3.0,
+  "param": "N_neighbours20_boxsize60_voidsize3"
+}
