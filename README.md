@@ -6,14 +6,32 @@ A machine learning package for detecting cosmic voids in galaxy distributions us
 
 VoidX leverages deep learning techniques to identify galaxies located in cosmic voids based on their 3D positions and distances to neighboring galaxies. The package provides tools for data preprocessing, model training, evaluation, and visualization.
 
+**New**: Voronoi tessellation-based features and Graph Neural Networks (GNN) to address spatial data leakage concerns!
+
 ## Features
 
-- **Multiple Model Architectures**: MLP, CNN, and Attention-based models for void detection
+- **Multiple Model Architectures**: MLP, CNN, Attention-based, and GNN models for void detection
+- **Voronoi Tessellation**: Extract topological features from galaxy distributions to avoid spatial data leakage
+- **Graph Neural Networks**: VoronoiGCN, VoronoiGAT, and VoronoiSAGE for leveraging spatial structure
 - **Data Processing**: Utilities for loading, preprocessing, and normalizing galaxy data
 - **Training Framework**: Comprehensive training pipeline with early stopping and checkpointing
 - **Visualization Tools**: 3D visualization of galaxy distributions and model predictions
 - **Jupyter Notebooks**: Interactive notebooks for data exploration and model training
 - **Easy-to-use API**: Simple interface for training and making predictions
+
+## What's New: Voronoi + GNN
+
+### The Problem: Spatial Data Leakage
+
+When training ML models on galaxy positions, there's a risk of spatial data leakage where the model memorizes positions rather than learning void characteristics. This causes poor generalization when tested on different spatial regions.
+
+### The Solution: Voronoi Features + Graph Neural Networks
+
+1. **Voronoi Tessellation**: Extract topological features (cell volumes, neighbor counts, adjacency) that capture local density without position memorization
+2. **MLP with Voronoi features**: Use only topological features for classification
+3. **GNN with Voronoi graph**: Leverage graph structure to capture multi-scale patterns while using positions in graph context
+
+See [VORONOI_GNN_GUIDE.md](VORONOI_GNN_GUIDE.md) for detailed explanation and usage examples.
 
 ## Installation
 
@@ -79,6 +97,43 @@ history = trainer.train(num_epochs=50, early_stopping_patience=10)
 # Evaluate
 results = trainer.evaluate(dataloaders['test'])
 print(f"Test Accuracy: {results['accuracy']:.4f}")
+```
+
+### Using Voronoi Features to Avoid Data Leakage
+
+```python
+from voidx.voronoi import VoronoiFeatureExtractor
+from voidx.models import VoidMLP, VoronoiGCN
+import numpy as np
+
+# Load your galaxy positions and labels
+positions = np.load('your_positions.npy')  # Shape: (N, 3)
+labels = np.load('your_labels.npy')        # Shape: (N,)
+
+# Extract Voronoi tessellation features
+extractor = VoronoiFeatureExtractor(
+    box_size=250.0,           # Your simulation box size
+    use_periodic=True,        # Use periodic boundaries
+)
+
+features = extractor.extract_features(positions)
+
+# Option 1: Train MLP with topological features (no positions!)
+mlp_features = extractor.create_mlp_features(
+    positions, 
+    include_positions=False  # Avoids spatial leakage
+)
+model = VoidMLP(in_features=2)  # volume + neighbor_count
+
+# Option 2: Train GNN with graph structure
+gnn_features = np.hstack([
+    features['normalized_volumes'][:, np.newaxis],
+    features['neighbor_count'][:, np.newaxis],
+    positions,  # OK in GNN due to graph context
+])
+model = VoronoiGCN(in_features=5)
+
+# See examples/compare_mlp_gnn_voronoi.py for complete example
 ```
 
 ## Data Format
