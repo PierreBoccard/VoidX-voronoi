@@ -112,3 +112,80 @@ def normalize_features(X_train, X_val=None, X_test=None, epsilon=1e-6):
     
     result.append((mean, std))
     return tuple(result)
+
+
+# ==================== Graph Neural Network Datasets ====================
+
+try:
+    from torch_geometric.data import Data, Dataset as PyGDataset
+    TORCH_GEOMETRIC_AVAILABLE = True
+except ImportError:
+    TORCH_GEOMETRIC_AVAILABLE = False
+    PyGDataset = object  # Dummy class
+
+
+class VoronoiGraphDataset(Dataset if not TORCH_GEOMETRIC_AVAILABLE else PyGDataset):
+    """
+    PyTorch Geometric Dataset for Voronoi cell graphs.
+    
+    Each sample is a graph where:
+    - Nodes represent Voronoi cells (galaxies)
+    - Edges represent adjacency between cells
+    - Node features include position, volume, neighbor count, etc.
+    - Node labels indicate void membership
+    
+    Args:
+        node_features: Node feature matrix, shape (N, D)
+        edge_index: Edge connectivity, shape (2, E)
+        labels: Node labels (void membership), shape (N,)
+        transform: Optional transform to apply to each Data object
+    """
+    
+    def __init__(
+        self,
+        node_features: np.ndarray,
+        edge_index: np.ndarray,
+        labels: np.ndarray,
+        transform=None,
+    ):
+        if not TORCH_GEOMETRIC_AVAILABLE:
+            raise ImportError(
+                "torch_geometric is required for graph datasets. "
+                "Install with: pip install torch-geometric"
+            )
+        
+        super().__init__(transform=transform)
+        
+        self.node_features = torch.as_tensor(node_features, dtype=torch.float32)
+        self.edge_index = torch.as_tensor(edge_index, dtype=torch.long)
+        self.labels = torch.as_tensor(labels, dtype=torch.float32)
+        
+        # Create a single graph Data object
+        self.data = Data(
+            x=self.node_features,
+            edge_index=self.edge_index,
+            y=self.labels,
+        )
+    
+    def len(self):
+        """Return number of nodes (for compatibility)."""
+        return self.node_features.shape[0]
+    
+    def get(self, idx):
+        """
+        Get the entire graph (single graph dataset).
+        
+        For node-level tasks, we return the full graph.
+        The idx parameter is kept for API compatibility but ignored.
+        """
+        return self.data
+    
+    @property
+    def num_features(self):
+        """Number of node features."""
+        return self.node_features.shape[1]
+    
+    @property
+    def num_classes(self):
+        """Number of classes (binary classification)."""
+        return 2
