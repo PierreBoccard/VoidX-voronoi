@@ -94,13 +94,13 @@ class VoidMLP(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         x: tensor of shape (N_galaxies, N_features)
-        returns: tensor of shape (N_galaxies, 1) with values in [0, 1]
+        returns: tensor of shape (N_galaxies,) with values in [0, 1]
         """
         for block in self.blocks:
             x = block(x)
         logits = self.out(x)
         probs = torch.sigmoid(logits)
-        return probs
+        return probs.squeeze(-1)  # Return shape (N,) instead of (N, 1)
     
 
 class SEBlock(nn.Module):
